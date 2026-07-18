@@ -1,59 +1,215 @@
-<div>Teachable Machine Image Model</div>
-<button type="button" onclick="init()">Start</button>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Image Model</title>
+    <!-- นำเข้าฟอนต์ Google Font เพื่อความสวยงาม -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-color: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #1F2937;
+            --text-muted: #4B5563;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: var(--text-main);
+        }
+
+        /* ตกแต่งปุ่ม Start */
+        .btn-start {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-start:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-start:active {
+            transform: translateY(1px);
+        }
+
+        /* จัดการกรอบแสดงผลกล้อง */
+        #webcam-container {
+            margin: 1rem auto;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #E5E7EB;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+            border: 3px solid #E5E7EB;
+        }
+
+        #webcam-container canvas {
+            display: block;
+            border-radius: 8px;
+        }
+
+        /* ปรับแต่งส่วนแสดงผล Label และแถบเปอร์เซ็นต์ */
+        #label-container {
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+
+        .prediction-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+
+        .prediction-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+            font-size: 0.95rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .progress-bar-bg {
+            background-color: #E5E7EB;
+            border-radius: 9999px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            background-color: var(--primary-color);
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s ease-out;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Teachable Machine Image Model</h1>
+    <button class="btn-start" type="button" onclick="init()">เปิดกล้องและเริ่มใช้งาน</button>
+    <div id="webcam-container">
+        <!-- กล้องจะแสดงตรงนี้หลังจากกดปุ่ม -->
+    </div>
+    <div id="label-container"></div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 <script type="text/javascript">
-    // More API functions here:
-    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
-
-    // the link to your model provided by Teachable Machine export panel
+    // ลิงก์โมเดลเดิมของคุณ
     const URL = "https://teachablemachine.withgoogle.com/models/sig1pdXOe/";
 
     let model, webcam, labelContainer, maxPredictions;
 
-    // Load the image model and setup the webcam
+    // โหลดโมเดลและตั้งค่ากล้อง
     async function init() {
         const modelURL = URL + "model.json";
         const metadataURL = URL + "metadata.json";
 
-        // load the model and metadata
-        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-        // or files from your local hard drive
-        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
         model = await tmImage.load(modelURL, metadataURL);
         maxPredictions = model.getTotalClasses();
 
-        // Convenience function to setup a webcam
-        const flip = true; // whether to flip the webcam
-        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
-        await webcam.setup(); // request access to the webcam
+        const flip = true; 
+        webcam = new tmImage.Webcam(200, 200, flip); 
+        await webcam.setup(); 
         await webcam.play();
         window.requestAnimationFrame(loop);
 
-        // append elements to the DOM
+        // แสดงผลกล้องในเว็บ
+        document.getElementById("webcam-container").innerHTML = ""; // ล้างข้อความเดิมออกก่อน
         document.getElementById("webcam-container").appendChild(webcam.canvas);
+        
+        // สร้างโครงสร้างสำหรับการแสดงผลผลลัพธ์ในรูปแบบแถบสวยงาม
         labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) { // and class labels
-            labelContainer.appendChild(document.createElement("div"));
+        labelContainer.innerHTML = ""; // ล้างข้อมูลเก่า
+        for (let i = 0; i < maxPredictions; i++) { 
+            const row = document.createElement("div");
+            row.className = "prediction-row";
+            row.innerHTML = `
+                <div class="prediction-info">
+                    <span class="class-name">-</span>
+                    <span class="probability-value">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill"></div>
+                </div>
+            `;
+            labelContainer.appendChild(row);
         }
     }
 
     async function loop() {
-        webcam.update(); // update the webcam frame
+        webcam.update(); 
         await predict();
         window.requestAnimationFrame(loop);
     }
 
-    // run the webcam image through the image model
+    // ประมวลผลภาพจากกล้อง
     async function predict() {
-        // predict can take in an image, video or canvas html element
         const prediction = await model.predict(webcam.canvas);
         for (let i = 0; i < maxPredictions; i++) {
-            const classPrediction =
-                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-            labelContainer.childNodes[i].innerHTML = classPrediction;
+            const className = prediction[i].className;
+            const probability = prediction[i].probability;
+            const percentage = (probability * 100).toFixed(0) + "%";
+            
+            // อัปเดตข้อความและแถบความน่าจะเป็นในหน้าเว็บ
+            const row = labelContainer.childNodes[i];
+            if (row) {
+                row.querySelector(".class-name").innerText = className;
+                row.querySelector(".probability-value").innerText = percentage;
+                row.querySelector(".progress-bar-fill").style.width = percentage;
+            }
         }
     }
 </script>
+
+</body>
+</html>
